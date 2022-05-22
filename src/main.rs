@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 use std::str::SplitWhitespace;
+use rand::{RngCore, SeedableRng};
+use rand::rngs::StdRng;
 
 #[derive(Default)]
 struct Data {
@@ -40,11 +42,22 @@ fn parse_remove(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
 	}
 }
 
+fn generate(count: u8) {
+	let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-".as_bytes();
+	let mut password = Vec::new();
+	let mut rng = StdRng::from_entropy();
+	for _ in 0..count {
+		password.push(alphabet[(rng.next_u64() as usize) % alphabet.len()]);
+	}
+	let password = std::str::from_utf8(&password).unwrap();
+	println!("{}", password);
+}
+
 fn parse_generate(tokens: &mut SplitWhitespace<'_>) {
 	match tokens.next() {
 		Some(token) =>
 			match token.parse::<u8>() {
-				Ok(value) => println!("TODO: generate a {} character password", value),
+				Ok(value) => generate(value),
 				Err(_) => println!("{} is not a valid number", token)
 			}
 		None => println!("expected number of characters")
