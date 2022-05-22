@@ -1,22 +1,46 @@
-fn view(_map: &std::collections::HashMap::<String, String>) {
-	println!("TODO: view");
+use std::collections::HashMap;
+use std::str::SplitWhitespace;
+
+#[derive(Default)]
+struct Data {
+	map: HashMap<String, String>
 }
 
-fn add(_map: &mut std::collections::HashMap::<String, String>, tokens: &mut std::str::SplitWhitespace<'_>) {
+impl Data {
+	fn show(&self) {
+		println!("{:?}", self.map);
+	}
+
+	fn insert(&mut self, key: &str, value: &str) {
+		// FIXME: ask user to confirm in case of overwrite
+		self.map.insert(String::from(key), String::from(value));
+	}
+
+	fn remove(&mut self, key: &str) {
+		// FIXME: prompt if key didn't exist
+		self.map.remove(key);
+	}
+}
+
+fn parse_insert(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
 	match tokens.next() {
-		Some(key) => println!("TODO: add {}", key),
+		Some(key) =>
+			match tokens.next() {
+				Some(value) => data.insert(key, value),
+				None => println!("missing value")
+			}
 		None => println!("expected key")
 	}
 }
 
-fn delete(_map: &mut std::collections::HashMap::<String, String>, tokens: &mut std::str::SplitWhitespace<'_>) {
+fn parse_remove(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
 	match tokens.next() {
-		Some(key) => println!("TODO: delete {}", key),
+		Some(key) => data.remove(key),
 		None => println!("expected key")
 	}
 }
 
-fn generate(tokens: &mut std::str::SplitWhitespace<'_>) {
+fn parse_generate(tokens: &mut SplitWhitespace<'_>) {
 	match tokens.next() {
 		Some(token) =>
 			match token.parse::<u8>() {
@@ -27,18 +51,18 @@ fn generate(tokens: &mut std::str::SplitWhitespace<'_>) {
 	}
 }
 
-fn handle<'a>(map: &mut std::collections::HashMap::<String, String>, command: &'a str, tokens: &mut std::str::SplitWhitespace<'a>) {
+fn parse_command<'a>(command: &'a str, tokens: &mut SplitWhitespace<'a>, data: &mut Data) {
 	match command {
-		"add" => add(map, tokens),
-		"delete" => delete(map, tokens),
-		"generate" => generate(tokens),
-		"view" => view(map),
+		"insert" => parse_insert(tokens, data),
+		"remove" => parse_remove(tokens, data),
+		"generate" => parse_generate(tokens),
+		"view" => data.show(),
 		_ => println!("unknown command {}", command)
 	}
 }
 
 fn main() {
-	let mut map = std::collections::HashMap::<String, String>::new();
+	let mut data: Data = Default::default();
 
 	loop {
 		let mut line = String::new();
@@ -46,9 +70,9 @@ fn main() {
 		let mut tokens = line.trim_end().split_whitespace();
 
 		match tokens.next() {
-			Some(command) => handle(&mut map, command, &mut tokens),
+			Some(command) => parse_command(command, &mut tokens, &mut data),
 			None => println!("command expected")
 
-		}	
+		}
 	}
 }
