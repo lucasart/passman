@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::str::SplitWhitespace;
-use rand::{RngCore, SeedableRng};
-use rand::rngs::StdRng;
+use rand::prelude::*;
 
 #[derive(Default)]
 struct Data {
@@ -44,13 +43,13 @@ fn parse_remove(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
 
 fn generate(count: u8) {
 	let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-".as_bytes();
-	let mut password = Vec::new();
-	let mut rng = StdRng::from_entropy();
-	for _ in 0..count {
-		password.push(alphabet[(rng.next_u64() as usize) % alphabet.len()]);
-	}
-	let password = std::str::from_utf8(&password).unwrap();
-	println!("{}", password);
+	let mut rng = thread_rng();
+
+	let password: Vec<u8> = (0..count)
+		.map(|_| { alphabet[rng.gen_range(0..alphabet.len())] })
+		.collect();
+
+	println!("{}", std::str::from_utf8(&password).unwrap());
 }
 
 fn parse_generate(tokens: &mut SplitWhitespace<'_>) {
@@ -83,7 +82,12 @@ fn main() {
 		let mut tokens = line.trim_end().split_whitespace();
 
 		match tokens.next() {
-			Some(command) => parse_command(command, &mut tokens, &mut data),
+			Some(command) =>
+				if command == "quit" {
+					break;
+				} else {
+					parse_command(command, &mut tokens, &mut data);
+				}
 			None => println!("command expected")
 
 		}
