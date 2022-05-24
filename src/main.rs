@@ -18,8 +18,10 @@ impl Data {
 	}
 
 	fn remove(&mut self, key: &str) {
-		// FIXME: prompt if key didn't exist
-		self.map.remove(key);
+		match self.map.remove(key) {
+			Some(_) => println!("removed entry '{}'", key),
+			None => println!("could not find entry '{}'", key)
+		}
 	}
 }
 
