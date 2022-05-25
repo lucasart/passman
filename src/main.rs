@@ -50,11 +50,10 @@ fn parse_remove(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
 }
 
 fn generate(count: u8) {
-	let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-".as_bytes();
 	let mut rng = thread_rng();
 
 	let password: Vec<u8> = (0..count)
-		.map(|_| { alphabet[rng.gen_range(0..alphabet.len())] })
+		.map(|_| rng.gen_range(33..126))  // any printable ASCII character
 		.collect();
 
 	println!("{}", std::str::from_utf8(&password).unwrap());
