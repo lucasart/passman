@@ -1,10 +1,11 @@
 qWerty
 	
-insert foo Bar
- insert bla
-insert 	
+add foo Bar
+ add bla
+add 	
+	add foo new_val
 view
-insert haha HiHi!
+add haha HiHi!
 remove
 remove foo
 remove missing

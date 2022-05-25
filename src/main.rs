@@ -12,9 +12,15 @@ impl Data {
 		println!("{:?}", self.map);
 	}
 
-	fn insert(&mut self, key: &str, value: &str) {
-		// FIXME: ask user to confirm in case of overwrite
-		self.map.insert(String::from(key), String::from(value));
+	fn add(&mut self, key: &str, value: &str) {
+		match self.map.get(key) {
+			Some(_) => println!("entry {} already exists", key),
+			None =>
+				match self.map.insert(String::from(key), String::from(value)) {
+					Some(_) => unreachable!(),
+					None => println!("added entry {}", key)
+				}
+		}
 	}
 
 	fn remove(&mut self, key: &str) {
@@ -25,11 +31,11 @@ impl Data {
 	}
 }
 
-fn parse_insert(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
+fn parse_add(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
 	match tokens.next() {
 		Some(key) =>
 			match tokens.next() {
-				Some(value) => data.insert(key, value),
+				Some(value) => data.add(key, value),
 				None => println!("missing value")
 			}
 		None => println!("expected key")
@@ -67,7 +73,7 @@ fn parse_generate(tokens: &mut SplitWhitespace<'_>) {
 
 fn parse_command<'a>(command: &'a str, tokens: &mut SplitWhitespace<'a>, data: &mut Data) {
 	match command {
-		"insert" => parse_insert(tokens, data),
+		"add" => parse_add(tokens, data),
 		"remove" => parse_remove(tokens, data),
 		"generate" => parse_generate(tokens),
 		"view" => data.show(),
