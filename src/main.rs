@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::str::SplitWhitespace;
 use rand::prelude::*;
+use std::io;
+use std::io::Write;
 
 #[derive(Default)]
 struct Data {
@@ -84,8 +86,11 @@ fn main() {
 	let mut data: Data = Default::default();
 
 	loop {
+		print!("> ");
+		io::stdout().flush().unwrap();
+
 		let mut line = String::new();
-		std::io::stdin().read_line(&mut line).unwrap();
+		io::stdin().read_line(&mut line).unwrap();
 		let mut tokens = line.trim_end().split_whitespace();
 
 		match tokens.next() {
