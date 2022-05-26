@@ -1,19 +1,17 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::str::SplitWhitespace;
 use rand::prelude::*;
-use std::io;
-use std::io::Write;
 
 #[derive(Default)]
 struct Data {
-	map: HashMap<String, String>
+	map: BTreeMap<String, String>
 }
 
 impl Data {
 	fn view(&self, prefix: Option<&str>) {
 		match prefix {
 			Some(prefix) =>
-				for entry in self.map.keys().filter(|k| (*k).starts_with(prefix)) {
+				for entry in self.map.keys().filter(|k| k.starts_with(prefix)) {
 					println!("{} {}", entry, self.map[entry]);
 				}
 			None =>
@@ -95,11 +93,8 @@ fn main() {
 	let mut data: Data = Default::default();
 
 	loop {
-		print!("> ");
-		io::stdout().flush().unwrap();
-
 		let mut line = String::new();
-		io::stdin().read_line(&mut line).unwrap();
+		std::io::stdin().read_line(&mut line).unwrap();
 		let mut tokens = line.trim_end().split_whitespace();
 
 		match tokens.next() {
