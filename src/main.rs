@@ -10,8 +10,17 @@ struct Data {
 }
 
 impl Data {
-	fn show(&self) {
-		println!("{:?}", self.map);
+	fn view(&self, prefix: Option<&str>) {
+		match prefix {
+			Some(prefix) =>
+				for entry in self.map.keys().filter(|k| (*k).starts_with(prefix)) {
+					println!("{} {}", entry, self.map[entry]);
+				}
+			None =>
+				for (key, value) in self.map.iter() {
+					println!("{} {}", key, value);
+				}
+		}
 	}
 
 	fn add(&mut self, key: &str, value: &str) {
@@ -77,7 +86,7 @@ fn parse_command<'a>(command: &'a str, tokens: &mut SplitWhitespace<'a>, data: &
 		"add" => parse_add(tokens, data),
 		"remove" => parse_remove(tokens, data),
 		"generate" => parse_generate(tokens),
-		"view" => data.show(),
+		"view" => data.view(tokens.next()),
 		_ => println!("unknown command {}", command)
 	}
 }

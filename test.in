@@ -4,8 +4,9 @@ add foo Bar
  add bla
 add 	
 	add foo new_val
-view
 add haha HiHi!
+view
+view ha
 remove
 remove foo
 remove missing
