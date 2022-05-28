@@ -1,8 +1,12 @@
 use std::collections::BTreeMap;
 use std::str::SplitWhitespace;
-use rand::prelude::*;
+use std::fs::File;
+use std::io::Write;
+use rand::{RngCore, Rng, rngs::OsRng};
+use chacha20poly1305::{XChaCha20Poly1305, Key, XNonce};
+use chacha20poly1305::aead::{Aead, NewAead};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct Data {
 	map: BTreeMap<String, String>
 }
@@ -38,6 +42,19 @@ impl Data {
 			None => println!("could not find entry '{}'", key)
 		}
 	}
+
+	fn to_bytes(&self) -> Vec<u8> {
+		let mut result = Vec::<u8>::new();
+
+		for (key, value) in self.map.iter() {
+			result.extend(key.as_bytes());
+			result.push(b' ');
+			result.extend(value.as_bytes());
+			result.push(b'\n');
+		}
+
+		result
+	}
 }
 
 fn parse_add(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
@@ -59,10 +76,8 @@ fn parse_remove(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
 }
 
 fn generate(count: u8) {
-	let mut rng = thread_rng();
-
 	let password: Vec<u8> = (0..count)
-		.map(|_| rng.gen_range(33..126))  // any printable ASCII character
+		.map(|_| OsRng.gen_range(33..126))  // any printable ASCII character
 		.collect();
 
 	println!("{}", std::str::from_utf8(&password).unwrap());
@@ -79,12 +94,40 @@ fn parse_generate(tokens: &mut SplitWhitespace<'_>) {
 	}
 }
 
+fn save(filepath: &str, password: &str, data: &Data) {
+	let key = Key::from_slice(b"an example very very secret key."); // FIXME: hash(password) instead
+	let cipher = XChaCha20Poly1305::new(key);
+
+	let mut nonce = [0u8; 24];
+	OsRng.fill_bytes(&mut nonce);
+
+	let before: Vec<u8> = data.to_bytes();
+	let after = cipher.encrypt(&nonce.into(), before.as_ref()).expect("encryption failure!");
+
+	let mut file = File::create(filepath).unwrap();
+	file.write(&nonce).unwrap();
+	file.write(&after).unwrap();
+}
+
+fn parse_save(tokens: &mut SplitWhitespace<'_>, data: &Data) {
+	match tokens.next() {
+		Some(filepath) => {
+			match tokens.next() {
+				Some(password) => save(filepath, password, data),
+				None => println!("missing key")
+			}
+		}
+		None => println!("missing file")
+	}
+}
+
 fn parse_command<'a>(command: &'a str, tokens: &mut SplitWhitespace<'a>, data: &mut Data) {
 	match command {
 		"add" => parse_add(tokens, data),
 		"remove" => parse_remove(tokens, data),
 		"generate" => parse_generate(tokens),
 		"view" => data.view(tokens.next()),
+		"save" => parse_save(tokens, data),
 		_ => println!("unknown command {}", command)
 	}
 }
@@ -105,7 +148,6 @@ fn main() {
 					parse_command(command, &mut tokens, &mut data);
 				}
 			None => println!("command expected")
-
 		}
 	}
 }

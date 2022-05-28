@@ -1,11 +1,14 @@
 qWerty
-	
+
 add foo Bar
- add bla
-add 	
+ add  bla
+add
 	add foo new_val
-add haha HiHi!
+add haha	HiHi!
 view
+save
+save file
+save file key
 view ha
 remove
 remove foo
