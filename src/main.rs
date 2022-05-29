@@ -3,8 +3,8 @@ use std::str::SplitWhitespace;
 use std::fs::File;
 use std::io::{Read, Write};
 use rand::{RngCore, Rng, rngs::OsRng};
-use chacha20poly1305::{XChaCha20Poly1305, Key};
-use chacha20poly1305::aead::{Aead, NewAead};
+use chacha20poly1305::{XChaCha20Poly1305,aead::{Aead, NewAead}};
+use blake2::{Blake2b, Digest};
 
 #[derive(Default, Debug)]
 struct Data {
@@ -57,7 +57,7 @@ impl Data {
 	}
 
 	fn from_bytes(&mut self, bytes: &Vec<u8>) {
-		let text = std::str::from_utf8(bytes).unwrap().trim_end();
+		let text = std::str::from_utf8(&bytes[..bytes.len()-1]).unwrap();
 		self.map.clear();
 
 		for line in text.split('\n') {
@@ -105,54 +105,67 @@ fn parse_generate(tokens: &mut SplitWhitespace<'_>) {
 	}
 }
 
-fn save(filepath: &str, password: &str, data: &Data) {
-	let key = Key::from_slice(b"an example very very secret key."); // FIXME: hash(password) instead
-	let cipher = XChaCha20Poly1305::new(key);
+fn save(filepath: &str, password: &str, data: &Data) -> std::io::Result<()> {
+	let hash = Blake2b::digest(password.as_bytes());
+	let cipher = XChaCha20Poly1305::new(hash[..32].as_ref().into());
 
 	let mut nonce = [0u8; 24];
 	OsRng.fill_bytes(&mut nonce);
 
-	let mut file = File::create(filepath).unwrap();
-	file.write(&nonce).unwrap();
+	let mut file = File::create(filepath)?;
+	file.write(&nonce)?;
 
 	let before: Vec<u8> = data.to_bytes();
-	let after = cipher.encrypt(&nonce.into(), before.as_ref()).expect("encryption failure!");
+	let after = cipher.encrypt(&nonce.into(), before.as_ref()).unwrap();
 
-	file.write(&after).unwrap();
+	file.write(&after)?;
+	Ok(())
 }
 
-fn load(filepath: &str, password: &str, data: &mut Data) {
-	let key = Key::from_slice(b"an example very very secret key."); // FIXME: hash(password) instead
-	let cipher = XChaCha20Poly1305::new(key);
+fn load(filepath: &str, password: &str, data: &mut Data) -> std::io::Result<()> {
+	let hash = Blake2b::digest(password.as_bytes());
+	let cipher = XChaCha20Poly1305::new(hash[..32].as_ref().into());
 
 	let mut nonce = [0u8; 24];
-	let mut file = File::open(filepath).unwrap();
-	file.read(&mut nonce).unwrap();
+	let mut file = File::open(filepath)?;
+	file.read(&mut nonce)?;
 
 	let mut before = Vec::<u8>::new();
-	file.read_to_end(&mut before).unwrap();
-	let after = cipher.decrypt(&nonce.into(), before.as_ref()).expect("decryption failure!");
+	file.read_to_end(&mut before)?;
 
-	data.from_bytes(&after);
+	match cipher.decrypt(&nonce.into(), before.as_ref()) {
+		Ok(after) => {
+			data.from_bytes(&after);
+			println!("{} loaded successfully", filepath);
+		}
+		Err(err) => println!("wrong password")
+	}
+
+	Ok(())
 }
 
 fn parse_save(tokens: &mut SplitWhitespace<'_>, data: &Data) {
 	match tokens.next() {
 		Some(filepath) =>
 			match tokens.next() {
-				Some(password) => save(filepath, password, data),
+				Some(password) => match save(filepath, password, data) {
+					Ok(()) => println!("{} saved successfully", filepath),
+					Err(err) => println!("{:?}", err)
+				}
 				None => println!("missing key")
 			}
 		None => println!("missing file")
 	}
 }
 
-// FIXME: factorize parse_save() and parse_load() using save and load as parameter
 fn parse_load(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
 	match tokens.next() {
 		Some(filepath) =>
 			match tokens.next() {
-				Some(password) => load(filepath, password, data),
+				Some(password) => match load(filepath, password, data) {
+					Ok(()) => {},
+					Err(err) => println!("{:?}", err),
+				}
 				None => println!("missing key")
 			}
 		None => println!("missing file")
