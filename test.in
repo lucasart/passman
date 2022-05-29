@@ -9,6 +9,9 @@ view
 save
 save file
 save file key
+load
+load file
+load file key
 view ha
 remove
 remove foo
