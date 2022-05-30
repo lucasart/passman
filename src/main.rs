@@ -116,9 +116,14 @@ fn save(filepath: &str, password: &str, data: &Data) -> std::io::Result<()> {
 	file.write(&nonce)?;
 
 	let before: Vec<u8> = data.to_bytes();
-	let after = cipher.encrypt(&nonce.into(), before.as_ref()).unwrap();
+	match cipher.encrypt(&nonce.into(), before.as_ref()) {
+		Ok(after) => {
+			file.write(&after)?;
+			println!("{} saved successfully", filepath);
+		}
+		Err(_) => println!("encryption error")
+	}
 
-	file.write(&after)?;
 	Ok(())
 }
 
@@ -138,7 +143,7 @@ fn load(filepath: &str, password: &str, data: &mut Data) -> std::io::Result<()> 
 			data.from_bytes(&after);
 			println!("{} loaded successfully", filepath);
 		}
-		Err(err) => println!("wrong password")
+		Err(_) => println!("wrong password")
 	}
 
 	Ok(())
@@ -148,10 +153,10 @@ fn parse_save(tokens: &mut SplitWhitespace<'_>, data: &Data) {
 	match tokens.next() {
 		Some(filepath) =>
 			match tokens.next() {
-				Some(password) => match save(filepath, password, data) {
-					Ok(()) => println!("{} saved successfully", filepath),
-					Err(err) => println!("{:?}", err)
-				}
+				Some(password) =>
+					if let Err(io_err) = save(filepath, password, data) {
+						println!("I/O error. {:?}", io_err)
+					}
 				None => println!("missing key")
 			}
 		None => println!("missing file")
@@ -162,10 +167,10 @@ fn parse_load(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
 	match tokens.next() {
 		Some(filepath) =>
 			match tokens.next() {
-				Some(password) => match load(filepath, password, data) {
-					Ok(()) => {},
-					Err(err) => println!("{:?}", err),
-				}
+				Some(password) =>
+					if let Err(io_err) = load(filepath, password, data) {
+						println!("I/O error. {:?}", io_err)
+					}
 				None => println!("missing key")
 			}
 		None => println!("missing file")
