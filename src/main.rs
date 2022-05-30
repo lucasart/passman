@@ -3,7 +3,7 @@ use std::str::SplitWhitespace;
 use std::fs::File;
 use std::io::{Read, Write};
 use rand::{RngCore, Rng, rngs::OsRng};
-use chacha20poly1305::{XChaCha20Poly1305,aead::{AeadInPlace, NewAead}};
+use chacha20::{XChaCha20, cipher::{KeyIvInit, StreamCipher}};
 use blake2::{Blake2b, Digest};
 
 #[derive(Default, Debug)]
@@ -56,8 +56,8 @@ impl Data {
 		result
 	}
 
-	fn from_bytes(&mut self, bytes: &Vec<u8>) {
-		let text = std::str::from_utf8(&bytes[..bytes.len()-1]).unwrap();
+	fn from_bytes(&mut self, bytes: &Vec<u8>) -> Result<(), std::str::Utf8Error> {
+		let text = std::str::from_utf8(&bytes[..bytes.len()-1])?;
 		self.map.clear();
 
 		for line in text.split('\n') {
@@ -65,6 +65,8 @@ impl Data {
 			assert_eq!(2, words.len());  // FIXME: handle gracefully at runtime
 			self.map.insert(words[0].to_owned(), words[1].to_owned());
 		}
+
+		Ok(())
 	}
 }
 
@@ -106,44 +108,38 @@ fn parse_generate(tokens: &mut SplitWhitespace<'_>) {
 }
 
 fn save(filepath: &str, password: &str, data: &Data) -> std::io::Result<()> {
-	let hash = Blake2b::digest(password.as_bytes());
-	let cipher = XChaCha20Poly1305::new(hash[..32].as_ref().into());
-
 	let mut nonce = [0u8; 24];
 	OsRng.fill_bytes(&mut nonce);
 
 	let mut file = File::create(filepath)?;
 	file.write(&nonce)?;
 
-	let mut buffer: Vec<u8> = data.to_bytes();
-	match cipher.encrypt_in_place(&nonce.into(), b"", &mut buffer) {
-		Ok(_) => {
-			file.write(&buffer)?;
-			println!("{} saved successfully", filepath);
-		}
-		Err(_) => println!("encryption error")
-	}
+	let hash = Blake2b::digest(password.as_bytes());
+	let mut cipher = XChaCha20::new(hash[..32].as_ref().into(), &nonce.into());
 
+	let mut buffer: Vec<u8> = data.to_bytes();
+	cipher.apply_keystream(&mut buffer);
+	file.write(&buffer)?;
+
+	println!("{} saved successfully", filepath);
 	Ok(())
 }
 
 fn load(filepath: &str, password: &str, data: &mut Data) -> std::io::Result<()> {
-	let hash = Blake2b::digest(password.as_bytes());
-	let cipher = XChaCha20Poly1305::new(hash[..32].as_ref().into());
-
 	let mut nonce = [0u8; 24];
 	let mut file = File::open(filepath)?;
 	file.read(&mut nonce)?;
 
+	let hash = Blake2b::digest(password.as_bytes());
+	let mut cipher = XChaCha20::new(hash[..32].as_ref().into(), &nonce.into());
+
 	let mut buffer = Vec::<u8>::new();
 	file.read_to_end(&mut buffer)?;
 
-	match cipher.decrypt_in_place(&nonce.into(), b"", &mut buffer) {
-		Ok(_) => {
-			data.from_bytes(&buffer);
-			println!("{} loaded successfully", filepath);
-		}
-		Err(_) => println!("wrong password")
+	cipher.apply_keystream(&mut buffer);
+	match data.from_bytes(&buffer) {
+		Ok(_) => println!("{} loaded successfully", filepath),
+		Err(err) => println!("wrong password or corrupted file. {}", err)
 	}
 
 	Ok(())
