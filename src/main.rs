@@ -3,7 +3,7 @@ use std::str::SplitWhitespace;
 use std::fs::File;
 use std::io::{Read, Write};
 use rand::{RngCore, Rng, rngs::OsRng};
-use chacha20poly1305::{XChaCha20Poly1305,aead::{Aead, NewAead}};
+use chacha20poly1305::{XChaCha20Poly1305,aead::{AeadInPlace, NewAead}};
 use blake2::{Blake2b, Digest};
 
 #[derive(Default, Debug)]
@@ -115,10 +115,10 @@ fn save(filepath: &str, password: &str, data: &Data) -> std::io::Result<()> {
 	let mut file = File::create(filepath)?;
 	file.write(&nonce)?;
 
-	let before: Vec<u8> = data.to_bytes();
-	match cipher.encrypt(&nonce.into(), before.as_ref()) {
-		Ok(after) => {
-			file.write(&after)?;
+	let mut buffer: Vec<u8> = data.to_bytes();
+	match cipher.encrypt_in_place(&nonce.into(), b"", &mut buffer) {
+		Ok(_) => {
+			file.write(&buffer)?;
 			println!("{} saved successfully", filepath);
 		}
 		Err(_) => println!("encryption error")
@@ -135,12 +135,12 @@ fn load(filepath: &str, password: &str, data: &mut Data) -> std::io::Result<()> 
 	let mut file = File::open(filepath)?;
 	file.read(&mut nonce)?;
 
-	let mut before = Vec::<u8>::new();
-	file.read_to_end(&mut before)?;
+	let mut buffer = Vec::<u8>::new();
+	file.read_to_end(&mut buffer)?;
 
-	match cipher.decrypt(&nonce.into(), before.as_ref()) {
-		Ok(after) => {
-			data.from_bytes(&after);
+	match cipher.decrypt_in_place(&nonce.into(), b"", &mut buffer) {
+		Ok(_) => {
+			data.from_bytes(&buffer);
 			println!("{} loaded successfully", filepath);
 		}
 		Err(_) => println!("wrong password")
