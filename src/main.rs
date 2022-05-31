@@ -147,28 +147,24 @@ fn load(filepath: &str, password: &str, data: &mut Data) -> std::io::Result<()> 
 
 fn parse_save(tokens: &mut SplitWhitespace<'_>, data: &Data) {
 	match tokens.next() {
-		Some(filepath) =>
-			match tokens.next() {
-				Some(password) =>
-					if let Err(io_err) = save(filepath, password, data) {
-						println!("I/O error. {:?}", io_err)
-					}
-				None => println!("missing key")
+		Some(filepath) => {
+			let password = rpassword::prompt_password("password: ").unwrap();
+			if let Err(io_err) = save(filepath, &password, data) {
+				println!("I/O error. {:?}", io_err)
 			}
+		}
 		None => println!("missing file")
 	}
 }
 
 fn parse_load(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
 	match tokens.next() {
-		Some(filepath) =>
-			match tokens.next() {
-				Some(password) =>
-					if let Err(io_err) = load(filepath, password, data) {
-						println!("I/O error. {:?}", io_err)
-					}
-				None => println!("missing key")
+		Some(filepath) => {
+			let password = rpassword::prompt_password("password: ").unwrap();
+			if let Err(io_err) = load(filepath, &password, data) {
+				println!("I/O error. {:?}", io_err)
 			}
+		}
 		None => println!("missing file")
 	}
 }
