@@ -70,24 +70,6 @@ impl Data {
 	}
 }
 
-fn parse_add(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
-	match tokens.next() {
-		Some(key) =>
-			match tokens.next() {
-				Some(value) => data.add(key, value),
-				None => println!("missing value")
-			}
-		None => println!("expected key")
-	}
-}
-
-fn parse_remove(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
-	match tokens.next() {
-		Some(key) => data.remove(key),
-		None => println!("expected key")
-	}
-}
-
 fn generate(count: u8) {
 	let password: Vec<u8> = (0..count)
 		.map(|_| OsRng.gen_range(33..126))  // any printable ASCII character
@@ -96,26 +78,20 @@ fn generate(count: u8) {
 	println!("{}", std::str::from_utf8(&password).unwrap());
 }
 
-fn parse_generate(tokens: &mut SplitWhitespace<'_>) {
-	match tokens.next() {
-		Some(token) =>
-			match token.parse::<u8>() {
-				Ok(value) => generate(value),
-				Err(_) => println!("{} is not a valid number", token)
-			}
-		None => println!("expected number of characters")
-	}
+fn get_password_hash() -> [u8; 32] {
+	let password = rpassword::prompt_password("password: ").unwrap();
+	let hash: [u8; 32] = Blake2b::digest(password.as_bytes())[..32].try_into().unwrap();
+	hash
 }
 
-fn save(filepath: &str, password: &str, data: &Data) -> std::io::Result<()> {
+fn save(filepath: &str, hash: [u8; 32], data: &Data) -> std::io::Result<()> {
 	let mut nonce = [0u8; 24];
 	OsRng.fill_bytes(&mut nonce);
 
 	let mut file = File::create(filepath)?;
 	file.write(&nonce)?;
 
-	let hash = Blake2b::digest(password.as_bytes());
-	let mut cipher = XChaCha20::new(hash[..32].as_ref().into(), &nonce.into());
+	let mut cipher = XChaCha20::new(&hash.into(), &nonce.into());
 
 	let mut buffer: Vec<u8> = data.to_bytes();
 	cipher.apply_keystream(&mut buffer);
@@ -125,13 +101,12 @@ fn save(filepath: &str, password: &str, data: &Data) -> std::io::Result<()> {
 	Ok(())
 }
 
-fn load(filepath: &str, password: &str, data: &mut Data) -> std::io::Result<()> {
+fn load(filepath: &str, hash: [u8; 32], data: &mut Data) -> std::io::Result<()> {
 	let mut nonce = [0u8; 24];
 	let mut file = File::open(filepath)?;
 	file.read(&mut nonce)?;
 
-	let hash = Blake2b::digest(password.as_bytes());
-	let mut cipher = XChaCha20::new(hash[..32].as_ref().into(), &nonce.into());
+	let mut cipher = XChaCha20::new(&hash.into(), &nonce.into());
 
 	let mut buffer = Vec::<u8>::new();
 	file.read_to_end(&mut buffer)?;
@@ -145,43 +120,66 @@ fn load(filepath: &str, password: &str, data: &mut Data) -> std::io::Result<()> 
 	Ok(())
 }
 
-fn parse_save(tokens: &mut SplitWhitespace<'_>, data: &Data) {
-	match tokens.next() {
-		Some(filepath) => {
-			let password = rpassword::prompt_password("password: ").unwrap();
-			if let Err(io_err) = save(filepath, &password, data) {
-				println!("I/O error. {:?}", io_err)
-			}
+fn handle_add(tokens: Vec<&str>, data: &mut Data) {
+	data.add(tokens[0], tokens[1]);
+}
+
+fn handle_remove(tokens: Vec<&str>, data: &mut Data) {
+	data.remove(tokens[0]);
+}
+
+fn handle_view(tokens: Vec<&str>, data: &mut Data) {
+	let prefix = if tokens.len() >= 1 { Some(tokens[0]) } else { None};
+	data.view(prefix);
+}
+
+fn handle_generate(tokens: Vec<&str>, _: &mut Data) {
+	match tokens.len() {
+		1 => match tokens[0].parse::<u8>() {
+			Ok(value) => generate(value),
+			Err(_) => println!("{} is not a valid number", tokens[0])
 		}
-		None => println!("missing file")
+		0 => generate(10),
+		_ => unreachable!()
 	}
 }
 
-fn parse_load(tokens: &mut SplitWhitespace<'_>, data: &mut Data) {
-	match tokens.next() {
-		Some(filepath) => {
-			let password = rpassword::prompt_password("password: ").unwrap();
-			if let Err(io_err) = load(filepath, &password, data) {
-				println!("I/O error. {:?}", io_err)
-			}
-		}
-		None => println!("missing file")
+fn handle_save(tokens: Vec<&str>, data: &mut Data) {
+	if let Err(io_err) = save(tokens[0], get_password_hash(), data) {
+		println!("I/O error. {:?}", io_err);
 	}
 }
 
-fn parse_command<'a>(command: &'a str, tokens: &mut SplitWhitespace<'a>, data: &mut Data) {
-	match command {
-		"add" => parse_add(tokens, data),
-		"remove" => parse_remove(tokens, data),
-		"generate" => parse_generate(tokens),
-		"view" => data.view(tokens.next()),
-		"save" => parse_save(tokens, data),
-		"load" => parse_load(tokens, data),
-		_ => println!("unknown command {}", command)
+fn handle_load(tokens: Vec<&str>, data: &mut Data) {
+	if let Err(io_err) = load(tokens[0], get_password_hash(), data) {
+		println!("I/O error. {:?}", io_err);
 	}
+}
+
+struct Command {
+	name: String,
+	help: String,
+	min_params: usize,
+	max_params: usize,
+	handler: fn(Vec<&str>, &mut Data) -> ()
 }
 
 fn main() {
+	let commands = [
+		Command {name: "add".to_owned(), help: "add key value".to_owned(), min_params: 2,
+			max_params: 2, handler: handle_add},
+		Command {name: "remove".to_owned(), help: "remove key".to_owned(), min_params: 1,
+			max_params: 1, handler: handle_remove},
+		Command {name: "view".to_owned(), help: "view [key]".to_owned(), min_params: 0,
+			max_params: 1, handler: handle_view},
+		Command {name: "save".to_owned(), help: "save file".to_owned(), min_params: 1,
+			max_params: 1, handler: handle_save},
+		Command {name: "load".to_owned(), help: "load file".to_owned(), min_params: 1,
+			max_params: 1, handler: handle_load},
+		Command {name: "generate".to_owned(), help: "generate [length]".to_owned(), min_params: 0,
+			max_params: 1, handler: handle_generate},
+	];
+
 	let mut data: Data = Default::default();
 
 	loop {
@@ -190,12 +188,37 @@ fn main() {
 		let mut tokens = line.trim_end().split_whitespace();
 
 		match tokens.next() {
-			Some(command) =>
-				if command == "quit" {
-					break;
-				} else {
-					parse_command(command, &mut tokens, &mut data);
+			Some(name) => match name {
+				"help" => commands
+					.iter()
+					.map(|c| println!("{}", c.help))
+					.collect(),
+				"quit" => break,
+				_ => {
+					let found: Vec<&Command> = commands
+						.iter()
+						.filter(|c| c.name == name)
+						.collect();
+
+					if found.len() == 1 {
+						let command = found[0];
+						let params: Vec<&str> = tokens.collect();
+
+						if params.len() < command.min_params {
+							println!("{} expects at least {} parameters", command.name,
+								command.min_params);
+						} else if params.len() > command.max_params {
+							println!("{} expects at most {} parameters", command.name,
+								command.max_params);
+						} else {
+							(command.handler)(params, &mut data);
+						}
+				    } else {
+						assert_eq!(0, found.len());
+						println!("command not found {}", name);
+					}
 				}
+			},
 			None => println!("command expected")
 		}
 	}
