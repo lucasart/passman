@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::str::SplitWhitespace;
 use std::fs::File;
 use std::io::{Read, Write};
 use rand::{RngCore, Rng, rngs::OsRng};
@@ -128,12 +127,12 @@ fn handle_remove(tokens: Vec<&str>, data: &mut Data) {
 	data.remove(tokens[0]);
 }
 
-fn handle_view(tokens: Vec<&str>, data: &mut Data) {
+fn handle_view(tokens: Vec<&str>, data: &Data) {
 	let prefix = if tokens.len() >= 1 { Some(tokens[0]) } else { None};
 	data.view(prefix);
 }
 
-fn handle_generate(tokens: Vec<&str>, _: &mut Data) {
+fn handle_generate(tokens: Vec<&str>) {
 	match tokens.len() {
 		1 => match tokens[0].parse::<u8>() {
 			Ok(value) => generate(value),
@@ -144,7 +143,7 @@ fn handle_generate(tokens: Vec<&str>, _: &mut Data) {
 	}
 }
 
-fn handle_save(tokens: Vec<&str>, data: &mut Data) {
+fn handle_save(tokens: Vec<&str>, data: &Data) {
 	if let Err(io_err) = save(tokens[0], get_password_hash(), data) {
 		println!("I/O error. {:?}", io_err);
 	}
@@ -156,28 +155,35 @@ fn handle_load(tokens: Vec<&str>, data: &mut Data) {
 	}
 }
 
+// Types of handler_*() function pointers
+enum Handler {
+	ND(fn(Vec<&str>) -> ()),  // no data
+	ID(fn(Vec<&str>, &Data) -> ()),  // immutable data
+	MD(fn(Vec<&str>, &mut Data) -> ()),  // mutable data
+}
+
 struct Command {
 	name: String,
 	help: String,
 	min_params: usize,
 	max_params: usize,
-	handler: fn(Vec<&str>, &mut Data) -> ()
+	handler: Handler,
 }
 
 fn main() {
 	let commands = [
 		Command {name: "add".to_owned(), help: "add key value".to_owned(), min_params: 2,
-			max_params: 2, handler: handle_add},
+			max_params: 2, handler: Handler::MD(handle_add)},
 		Command {name: "remove".to_owned(), help: "remove key".to_owned(), min_params: 1,
-			max_params: 1, handler: handle_remove},
+			max_params: 1, handler: Handler::MD(handle_remove)},
 		Command {name: "view".to_owned(), help: "view [key]".to_owned(), min_params: 0,
-			max_params: 1, handler: handle_view},
+			max_params: 1, handler: Handler::ID(handle_view)},
 		Command {name: "save".to_owned(), help: "save file".to_owned(), min_params: 1,
-			max_params: 1, handler: handle_save},
+			max_params: 1, handler: Handler::ID(handle_save)},
 		Command {name: "load".to_owned(), help: "load file".to_owned(), min_params: 1,
-			max_params: 1, handler: handle_load},
+			max_params: 1, handler: Handler::MD(handle_load)},
 		Command {name: "generate".to_owned(), help: "generate [length]".to_owned(), min_params: 0,
-			max_params: 1, handler: handle_generate},
+			max_params: 1, handler: Handler::ND(handle_generate)},
 	];
 
 	let mut data: Data = Default::default();
@@ -211,7 +217,11 @@ fn main() {
 							println!("{} expects at most {} parameters", command.name,
 								command.max_params);
 						} else {
-							(command.handler)(params, &mut data);
+							match command.handler {
+								Handler::ND(h) => h(params),
+								Handler::ID(h) => h(params, &data),
+								Handler::MD(h) => h(params, &mut data),
+							}
 						}
 				    } else {
 						assert_eq!(0, found.len());
