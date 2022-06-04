@@ -15,9 +15,9 @@ impl Data {
 		match prefix {
 			Some(prefix) => self.map.keys()
 				.filter(|key| key.starts_with(prefix))
-				.for_each(|key| println!("{} {}", key, self.map[key])),
+				.for_each(|key| println!("{}\t{}", key, self.map[key])),
 			None => self.map.iter()
-				.for_each(|(key, value)| println!("{} {}", key, value)),
+				.for_each(|(key, value)| println!("{}\t{}", key, value)),
 		}
 	}
 
@@ -44,7 +44,7 @@ impl Data {
 
 		for (key, value) in self.map.iter() {
 			result.extend(key.as_bytes());
-			result.push(b' ');
+			result.push(b'\t');
 			result.extend(value.as_bytes());
 			result.push(b'\n');
 		}
@@ -57,7 +57,7 @@ impl Data {
 		self.map.clear();
 
 		for line in text.split('\n') {
-			let words: Vec<&str> = line.split(' ').collect();
+			let words: Vec<&str> = line.split('\t').collect();
 			assert_eq!(2, words.len());  // FIXME: handle gracefully at runtime
 			self.map.insert(words[0].to_owned(), words[1].to_owned());
 		}
@@ -68,7 +68,7 @@ impl Data {
 
 fn generate(count: u8) {
 	let password: Vec<u8> = (0..count)
-		.map(|_| OsRng.gen_range(33..126))  // any printable ASCII character
+		.map(|_| OsRng.gen_range(32..126))  // any printable ASCII character
 		.collect();
 
 	println!("{}", std::str::from_utf8(&password).unwrap());
@@ -195,45 +195,43 @@ const COMMANDS: [Command; 7] = [
 		handler: Handler::ND(handle_help)},
 ];
 
+fn handle_command(name: & str, params: Vec<&str>, data: &mut Data) {
+	let found: Vec<&Command> = COMMANDS.iter()
+		.filter(|c| c.name == name)
+		.collect();
+
+	if found.len() == 1 {
+		let command = found[0];
+
+		if params.len() < command.min_params {
+			println!("{} expects at least {} parameters", command.name, command.min_params);
+		} else if params.len() > command.max_params {
+			println!("{} expects at most {} parameters", command.name, command.max_params);
+		} else {
+			match command.handler {
+				Handler::ND(h) => h(params),
+				Handler::ID(h) => h(params, data),
+				Handler::MD(h) => h(params, data),
+			}
+		}
+	} else {
+		assert_eq!(0, found.len());
+		println!("command not found {}", name);
+	}
+}
+
 fn main() {
 	let mut data: Data = Default::default();
 
 	loop {
 		let mut line = String::new();
 		std::io::stdin().read_line(&mut line).unwrap();
-		let mut tokens = line.trim_end().split_whitespace();
+		let mut tokens = line.trim_end().split('\t');
 
 		match tokens.next() {
 			Some(name) => match name {
 				"quit" => break,
-				_ => {
-					let found: Vec<&Command> = COMMANDS
-						.iter()
-						.filter(|c| c.name == name)
-						.collect();
-
-					if found.len() == 1 {
-						let command = found[0];
-						let params: Vec<&str> = tokens.collect();
-
-						if params.len() < command.min_params {
-							println!("{} expects at least {} parameters", command.name,
-								command.min_params);
-						} else if params.len() > command.max_params {
-							println!("{} expects at most {} parameters", command.name,
-								command.max_params);
-						} else {
-							match command.handler {
-								Handler::ND(h) => h(params),
-								Handler::ID(h) => h(params, &data),
-								Handler::MD(h) => h(params, &mut data),
-							}
-						}
-				    } else {
-						assert_eq!(0, found.len());
-						println!("command not found {}", name);
-					}
-				}
+				_ => handle_command(name, tokens.collect(), &mut data),
 			},
 			None => println!("command expected")
 		}
