@@ -13,14 +13,11 @@ struct Data {
 impl Data {
 	fn view(&self, prefix: Option<&str>) {
 		match prefix {
-			Some(prefix) =>
-				for entry in self.map.keys().filter(|k| k.starts_with(prefix)) {
-					println!("{} {}", entry, self.map[entry]);
-				}
-			None =>
-				for (key, value) in self.map.iter() {
-					println!("{} {}", key, value);
-				}
+			Some(prefix) => self.map.keys()
+				.filter(|key| key.starts_with(prefix))
+				.for_each(|key| println!("{} {}", key, self.map[key])),
+			None => self.map.iter()
+				.for_each(|(key, value)| println!("{} {}", key, value)),
 		}
 	}
 
@@ -119,39 +116,50 @@ fn load(filepath: &str, hash: [u8; 32], data: &mut Data) -> std::io::Result<()> 
 	Ok(())
 }
 
-fn handle_add(tokens: Vec<&str>, data: &mut Data) {
-	data.add(tokens[0], tokens[1]);
+fn handle_add(params: Vec<&str>, data: &mut Data) {
+	data.add(params[0], params[1]);
 }
 
-fn handle_remove(tokens: Vec<&str>, data: &mut Data) {
-	data.remove(tokens[0]);
+fn handle_remove(params: Vec<&str>, data: &mut Data) {
+	data.remove(params[0]);
 }
 
-fn handle_view(tokens: Vec<&str>, data: &Data) {
-	let prefix = if tokens.len() >= 1 { Some(tokens[0]) } else { None};
+fn handle_view(params: Vec<&str>, data: &Data) {
+	let prefix = if params.len() >= 1 { Some(params[0]) } else { None};
 	data.view(prefix);
 }
 
-fn handle_generate(tokens: Vec<&str>) {
-	match tokens.len() {
-		1 => match tokens[0].parse::<u8>() {
+fn handle_generate(params: Vec<&str>) {
+	match params.len() {
+		1 => match params[0].parse::<u8>() {
 			Ok(value) => generate(value),
-			Err(_) => println!("{} is not a valid number", tokens[0])
+			Err(_) => println!("{} is not a valid number", params[0])
 		}
 		0 => generate(10),
 		_ => unreachable!()
 	}
 }
 
-fn handle_save(tokens: Vec<&str>, data: &Data) {
-	if let Err(io_err) = save(tokens[0], get_password_hash(), data) {
+fn handle_save(params: Vec<&str>, data: &Data) {
+	if let Err(io_err) = save(params[0], get_password_hash(), data) {
 		println!("I/O error. {:?}", io_err);
 	}
 }
 
-fn handle_load(tokens: Vec<&str>, data: &mut Data) {
-	if let Err(io_err) = load(tokens[0], get_password_hash(), data) {
+fn handle_load(params: Vec<&str>, data: &mut Data) {
+	if let Err(io_err) = load(params[0], get_password_hash(), data) {
 		println!("I/O error. {:?}", io_err);
+	}
+}
+
+fn handle_help(params: Vec<&str>) {
+	if params.len() > 0 {
+		COMMANDS.iter()
+			.filter(|c| c.name.starts_with(params[0]))
+			.for_each(|c| println!("{}", c.help));
+	} else {
+		COMMANDS.iter()
+			.for_each(|c| println!("{}", c.help));
 	}
 }
 
@@ -163,29 +171,31 @@ enum Handler {
 }
 
 struct Command {
-	name: String,
-	help: String,
+	name: &'static str,
+	help: &'static str,
 	min_params: usize,
 	max_params: usize,
 	handler: Handler,
 }
 
-fn main() {
-	let commands = [
-		Command {name: "add".to_owned(), help: "add key value".to_owned(), min_params: 2,
-			max_params: 2, handler: Handler::MD(handle_add)},
-		Command {name: "remove".to_owned(), help: "remove key".to_owned(), min_params: 1,
-			max_params: 1, handler: Handler::MD(handle_remove)},
-		Command {name: "view".to_owned(), help: "view [key]".to_owned(), min_params: 0,
-			max_params: 1, handler: Handler::ID(handle_view)},
-		Command {name: "save".to_owned(), help: "save file".to_owned(), min_params: 1,
-			max_params: 1, handler: Handler::ID(handle_save)},
-		Command {name: "load".to_owned(), help: "load file".to_owned(), min_params: 1,
-			max_params: 1, handler: Handler::MD(handle_load)},
-		Command {name: "generate".to_owned(), help: "generate [length]".to_owned(), min_params: 0,
-			max_params: 1, handler: Handler::ND(handle_generate)},
-	];
+const COMMANDS: [Command; 7] = [
+	Command {name: "add", help: "add key value", min_params: 2, max_params: 2,
+		handler: Handler::MD(handle_add)},
+	Command {name: "remove", help: "remove key", min_params: 1, max_params: 1,
+		handler: Handler::MD(handle_remove)},
+	Command {name: "view", help: "view [key]", min_params: 0, max_params: 1,
+		handler: Handler::ID(handle_view)},
+	Command {name: "save", help: "save file", min_params: 1, max_params: 1,
+		handler: Handler::ID(handle_save)},
+	Command {name: "load", help: "load file", min_params: 1, max_params: 1,
+		handler: Handler::MD(handle_load)},
+	Command {name: "generate", help: "generate [length]", min_params: 0, max_params: 1,
+		handler: Handler::ND(handle_generate)},
+	Command {name: "help", help: "help [command]", min_params: 0, max_params: 1,
+		handler: Handler::ND(handle_help)},
+];
 
+fn main() {
 	let mut data: Data = Default::default();
 
 	loop {
@@ -195,13 +205,9 @@ fn main() {
 
 		match tokens.next() {
 			Some(name) => match name {
-				"help" => commands
-					.iter()
-					.map(|c| println!("{}", c.help))
-					.collect(),
 				"quit" => break,
 				_ => {
-					let found: Vec<&Command> = commands
+					let found: Vec<&Command> = COMMANDS
 						.iter()
 						.filter(|c| c.name == name)
 						.collect();
