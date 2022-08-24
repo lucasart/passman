@@ -74,19 +74,19 @@ struct Command {
 }
 
 const COMMANDS: [Command; 7] = [
-	Command {name: "add", help: "add key value", min_params: 2, max_params: 2,
+	Command {name: "add", help: "add\tkey\tvalue", min_params: 2, max_params: 2,
 		handler: Handler::MD(handle_add)},
-	Command {name: "remove", help: "remove key", min_params: 1, max_params: 1,
+	Command {name: "remove", help: "remove\tkey", min_params: 1, max_params: 1,
 		handler: Handler::MD(handle_remove)},
-	Command {name: "view", help: "view [key]", min_params: 0, max_params: 1,
+	Command {name: "view", help: "view\t[key]", min_params: 0, max_params: 1,
 		handler: Handler::ID(handle_view)},
-	Command {name: "save", help: "save file", min_params: 1, max_params: 1,
+	Command {name: "save", help: "save\tfile", min_params: 1, max_params: 1,
 		handler: Handler::ID(handle_save)},
-	Command {name: "load", help: "load file", min_params: 1, max_params: 1,
+	Command {name: "load", help: "load\tfile", min_params: 1, max_params: 1,
 		handler: Handler::MD(handle_load)},
-	Command {name: "generate", help: "generate [length]", min_params: 0, max_params: 1,
+	Command {name: "gen", help: "gen\t[length]", min_params: 0, max_params: 1,
 		handler: Handler::ND(handle_generate)},
-	Command {name: "help", help: "help [command]", min_params: 0, max_params: 1,
+	Command {name: "help", help: "help\t[command]", min_params: 0, max_params: 1,
 		handler: Handler::ND(handle_help)},
 ];
 
