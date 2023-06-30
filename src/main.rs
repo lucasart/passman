@@ -5,7 +5,7 @@ use rand::{Rng, rngs::OsRng};
 
 fn generate(count: u8) {
 	let password: Vec<u8> = (0..count)
-		.map(|_| OsRng.gen_range(32..126))  // any printable ASCII character
+		.map(|_| OsRng.gen_range(32..126))  // printable ASCII character
 		.collect();
 
 	println!("{}", std::str::from_utf8(&password).unwrap());
