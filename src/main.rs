@@ -101,23 +101,23 @@ fn handle_command(name: & str, params: Vec<&str>, data: &mut Data) {
 		.filter(|c| c.name == name)
 		.collect();
 
-	if found.len() == 1 {
-		let command = found[0];
+	match found.first() {
+		Some(command) => {
+			assert_eq!(1, found.len());
 
-		if params.len() < command.param_cnt.0 {
-			println!("{} expects at least {} parameters", command.name, command.param_cnt.0);
-		} else if params.len() > command.param_cnt.1 {
-			println!("{} expects at most {} parameters", command.name, command.param_cnt.1);
-		} else {
-			match command.handler {
-				Handler::ND(h) => h(params),
-				Handler::ID(h) => h(params, data),
-				Handler::MD(h) => h(params, data),
+			if params.len() < command.param_cnt.0 {
+				println!("{} expects at least {} parameters", command.name, command.param_cnt.0);
+			} else if params.len() > command.param_cnt.1 {
+				println!("{} expects at most {} parameters", command.name, command.param_cnt.1);
+			} else {
+				match command.handler {
+					Handler::ND(h) => h(params),
+					Handler::ID(h) => h(params, data),
+					Handler::MD(h) => h(params, data),
+				}
 			}
 		}
-	} else {
-		assert_eq!(0, found.len());
-		println!("command not found {}", name);
+		None => println!("command not found {}", name)
 	}
 }
 
