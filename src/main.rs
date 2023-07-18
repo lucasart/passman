@@ -36,8 +36,15 @@ fn handle_generate(params: Vec<&str>) {
 }
 
 fn handle_save(params: Vec<&str>, data: &Data) {
-	if let Err(io_err) = data.save(params[0], &rpassword::prompt_password("password: ").unwrap()) {
-		println!("I/O error. {:?}", io_err);
+	let pwd = rpassword::prompt_password("password: ").unwrap();
+	let pwd_conf = rpassword::prompt_password("confirm password: ").unwrap();
+
+	if pwd_conf == pwd {
+		if let Err(io_err) = data.save(params[0], &pwd) {
+			println!("I/O error. {:?}", io_err);
+		}
+	} else {
+		println!("password confirmation failed. save aborted.");
 	}
 }
 
