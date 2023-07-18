@@ -75,25 +75,24 @@ enum Handler {
 struct Command {
 	name: &'static str,
 	help: &'static str,
-	min_params: usize,
-	max_params: usize,
+	param_cnt: (usize, usize),
 	handler: Handler,
 }
 
 const COMMANDS: [Command; 7] = [
-	Command {name: "add", help: "add\tkey\tvalue", min_params: 2, max_params: 2,
+	Command {name: "add", help: "add\tkey\tvalue", param_cnt: (2, 2),
 		handler: Handler::MD(handle_add)},
-	Command {name: "remove", help: "remove\tkey", min_params: 1, max_params: 1,
+	Command {name: "remove", help: "remove\tkey", param_cnt: (1, 1),
 		handler: Handler::MD(handle_remove)},
-	Command {name: "view", help: "view\t[key]", min_params: 0, max_params: 1,
+	Command {name: "view", help: "view\t[key]", param_cnt: (0, 1),
 		handler: Handler::ID(handle_view)},
-	Command {name: "save", help: "save\tfile", min_params: 1, max_params: 1,
+	Command {name: "save", help: "save\tfile", param_cnt: (1, 1),
 		handler: Handler::ID(handle_save)},
-	Command {name: "load", help: "load\tfile", min_params: 1, max_params: 1,
+	Command {name: "load", help: "load\tfile", param_cnt: (1, 1),
 		handler: Handler::MD(handle_load)},
-	Command {name: "gen", help: "gen\t[length]", min_params: 0, max_params: 1,
+	Command {name: "gen", help: "gen\t[length]", param_cnt: (0, 1),
 		handler: Handler::ND(handle_generate)},
-	Command {name: "help", help: "help\t[command]", min_params: 0, max_params: 1,
+	Command {name: "help", help: "help\t[command]", param_cnt: (0, 1),
 		handler: Handler::ND(handle_help)},
 ];
 
@@ -105,10 +104,10 @@ fn handle_command(name: & str, params: Vec<&str>, data: &mut Data) {
 	if found.len() == 1 {
 		let command = found[0];
 
-		if params.len() < command.min_params {
-			println!("{} expects at least {} parameters", command.name, command.min_params);
-		} else if params.len() > command.max_params {
-			println!("{} expects at most {} parameters", command.name, command.max_params);
+		if params.len() < command.param_cnt.0 {
+			println!("{} expects at least {} parameters", command.name, command.param_cnt.0);
+		} else if params.len() > command.param_cnt.1 {
+			println!("{} expects at most {} parameters", command.name, command.param_cnt.1);
 		} else {
 			match command.handler {
 				Handler::ND(h) => h(params),
