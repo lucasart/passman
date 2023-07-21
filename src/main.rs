@@ -25,13 +25,12 @@ fn handle_view(params: Vec<&str>, data: &Data) {
 }
 
 fn handle_generate(params: Vec<&str>) {
-	match params.len() {
-		1 => match params[0].parse::<u8>() {
+	match params.first() {
+		Some(token) => match token.parse::<u8>() {
 			Ok(value) => generate(value),
-			Err(_) => println!("{} is not a valid number", params[0])
-		}
-		0 => generate(10),
-		_ => unreachable!()
+			Err(_) => println!("{token} is not a valid number"),
+		},
+		None => generate(10),
 	}
 }
 
