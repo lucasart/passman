@@ -1,5 +1,6 @@
 mod data;
 use crate::data::Data;
+use std::collections::BTreeMap;
 
 use rand::{Rng, rngs::OsRng};
 
@@ -61,25 +62,18 @@ enum Handler {
 }
 
 struct Command {
-	name: &'static str,
 	help: &'static str,
 	param_cnt: (usize, usize),
 	handler: Handler,
 }
 
-fn handle_command(name: &str, params: Vec<&str>, commands: &[Command; 6], data: &mut Data) {
-	let found: Vec<&Command> = commands.iter()
-		.filter(|c| c.name == name)
-		.collect();
-
-	match found.first() {
+fn handle_command(name: &str, params: Vec<&str>, commands: &BTreeMap<&str, Command>, data: &mut Data) {
+	match commands.get(name) {
 		Some(command) => {
-			assert_eq!(1, found.len());
-
 			if params.len() < command.param_cnt.0 {
-				println!("{} expects at least {} parameters", command.name, command.param_cnt.0);
+				println!("{} expects at least {} parameters", name, command.param_cnt.0);
 			} else if params.len() > command.param_cnt.1 {
-				println!("{} expects at most {} parameters", command.name, command.param_cnt.1);
+				println!("{} expects at most {} parameters", name, command.param_cnt.1);
 			} else {
 				match command.handler {
 					Handler::ND(h) => h(params),
@@ -93,20 +87,14 @@ fn handle_command(name: &str, params: Vec<&str>, commands: &[Command; 6], data: 
 }
 
 fn main() {
-	const COMMANDS: [Command; 6] = [
-		Command {name: "add", help: "add\tkey\tvalue", param_cnt: (2, 2),
-			handler: Handler::MD(handle_add)},
-		Command {name: "remove", help: "remove\tkey", param_cnt: (1, 1),
-			handler: Handler::MD(handle_remove)},
-		Command {name: "view", help: "view\t[key]", param_cnt: (0, 1),
-			handler: Handler::ID(handle_view)},
-		Command {name: "save", help: "save\tfile", param_cnt: (1, 1),
-			handler: Handler::ID(handle_save)},
-		Command {name: "load", help: "load\tfile", param_cnt: (1, 1),
-			handler: Handler::MD(handle_load)},
-		Command {name: "gen", help: "gen\t[length]", param_cnt: (0, 1),
-			handler: Handler::ND(handle_generate)},
-	];
+	let commands = BTreeMap::from([
+		("add", Command {help: "key\tvalue", param_cnt: (2, 2), handler: Handler::MD(handle_add)}),
+		("remove", Command {help: "key", param_cnt: (1, 1), handler: Handler::MD(handle_remove)}),
+		("view", Command {help: "[key]", param_cnt: (0, 1), handler: Handler::ID(handle_view)}),
+		("save", Command {help: "file", param_cnt: (1, 1), handler: Handler::ID(handle_save)}),
+		("load", Command {help: "file", param_cnt: (1, 1), handler: Handler::MD(handle_load)}),
+		("gen", Command {help: "[length]", param_cnt: (0, 1), handler: Handler::ND(handle_generate)}),
+	]);
 
 	let mut data: Data = Default::default();
 
@@ -118,9 +106,9 @@ fn main() {
 		match tokens.next() {
 			Some(name) => match name {
 				"quit" => break,
-				"help" => COMMANDS.iter()
-					.for_each(|c| println!("{}", c.help)),
-				_ => handle_command(name, tokens.collect(), &COMMANDS, &mut data),
+				"help" => commands.iter()
+					.for_each(|(name, command)| println!("{}\t{}", name, command.help)),
+				_ => handle_command(name, tokens.collect(), &commands, &mut data),
 			},
 			None => println!("command expected")
 		}
