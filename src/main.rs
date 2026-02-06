@@ -20,8 +20,13 @@ fn handle_remove(params: Vec<&str>, data: &mut Data) {
 	data.remove(params[0]);
 }
 
+fn handle_list(params: Vec<&str>, data: &Data) {
+	let prefix = if !params.is_empty() { Some(params[0]) } else { None};
+	data.list(prefix);
+}
+
 fn handle_view(params: Vec<&str>, data: &Data) {
-	let prefix = if params.len() >= 1 { Some(params[0]) } else { None};
+	let prefix = if !params.is_empty() { Some(params[0]) } else { None};
 	data.view(prefix);
 }
 
@@ -90,6 +95,7 @@ fn main() {
 	let commands = BTreeMap::from([
 		("add", Command {help: "key\tvalue", param_cnt: (2, 2), handler: Handler::MD(handle_add)}),
 		("remove", Command {help: "key", param_cnt: (1, 1), handler: Handler::MD(handle_remove)}),
+		("list", Command {help: "[prefix]", param_cnt: (0, 1), handler: Handler::ID(handle_list)}),
 		("view", Command {help: "[key]", param_cnt: (0, 1), handler: Handler::ID(handle_view)}),
 		("save", Command {help: "file", param_cnt: (1, 1), handler: Handler::ID(handle_save)}),
 		("load", Command {help: "file", param_cnt: (1, 1), handler: Handler::MD(handle_load)}),

@@ -11,6 +11,16 @@ pub struct Data {
 }
 
 impl Data {
+	pub fn list(&self, prefix: Option<&str>) {
+		match prefix {
+			Some(prefix) => self.map.keys()
+				.filter(|key| key.starts_with(prefix))
+				.for_each(|key| println!("{}", key)),
+			None => self.map.keys()
+				.for_each(|key| println!("{}", key)),
+		}
+	}
+
 	pub fn view(&self, prefix: Option<&str>) {
 		match prefix {
 			Some(prefix) => self.map.keys()
