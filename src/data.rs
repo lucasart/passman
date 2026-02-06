@@ -21,13 +21,10 @@ impl Data {
 		}
 	}
 
-	pub fn view(&self, prefix: Option<&str>) {
-		match prefix {
-			Some(prefix) => self.map.keys()
-				.filter(|key| key.starts_with(prefix))
-				.for_each(|key| println!("{}\t{}", key, self.map[key])),
-			None => self.map.iter()
-				.for_each(|(key, value)| println!("{}\t{}", key, value)),
+	pub fn view(&self, key: &str) {
+		match self.map.get(key) {
+			Some(value) => println!("{}\t{}", key, value),
+			None => println!("{} not found!", key),
 		}
 	}
 

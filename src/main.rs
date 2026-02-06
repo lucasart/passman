@@ -26,8 +26,7 @@ fn handle_list(params: Vec<&str>, data: &Data) {
 }
 
 fn handle_view(params: Vec<&str>, data: &Data) {
-	let prefix = if !params.is_empty() { Some(params[0]) } else { None};
-	data.view(prefix);
+	data.view(params[0]);
 }
 
 fn handle_generate(params: Vec<&str>) {
@@ -96,7 +95,7 @@ fn main() {
 		("add", Command {help: "key\tvalue", param_cnt: (2, 2), handler: Handler::MD(handle_add)}),
 		("remove", Command {help: "key", param_cnt: (1, 1), handler: Handler::MD(handle_remove)}),
 		("list", Command {help: "[prefix]", param_cnt: (0, 1), handler: Handler::ID(handle_list)}),
-		("view", Command {help: "[key]", param_cnt: (0, 1), handler: Handler::ID(handle_view)}),
+		("view", Command {help: "key", param_cnt: (1, 1), handler: Handler::ID(handle_view)}),
 		("save", Command {help: "file", param_cnt: (1, 1), handler: Handler::ID(handle_save)}),
 		("load", Command {help: "file", param_cnt: (1, 1), handler: Handler::MD(handle_load)}),
 		("gen", Command {help: "[length]", param_cnt: (0, 1), handler: Handler::ND(handle_generate)}),
