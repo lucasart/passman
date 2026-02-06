@@ -53,17 +53,6 @@ fn handle_load(params: Vec<&str>, data: &mut Data) {
 	}
 }
 
-fn handle_help(params: Vec<&str>) {
-	if params.len() > 0 {
-		COMMANDS.iter()
-			.filter(|c| c.name.starts_with(params[0]))
-			.for_each(|c| println!("{}", c.help));
-	} else {
-		COMMANDS.iter()
-			.for_each(|c| println!("{}", c.help));
-	}
-}
-
 // Types of handler_*() function pointers
 enum Handler {
 	ND(fn(Vec<&str>) -> ()),  // no data
@@ -78,7 +67,7 @@ struct Command {
 	handler: Handler,
 }
 
-const COMMANDS: [Command; 7] = [
+const COMMANDS: [Command; 6] = [
 	Command {name: "add", help: "add\tkey\tvalue", param_cnt: (2, 2),
 		handler: Handler::MD(handle_add)},
 	Command {name: "remove", help: "remove\tkey", param_cnt: (1, 1),
@@ -91,8 +80,6 @@ const COMMANDS: [Command; 7] = [
 		handler: Handler::MD(handle_load)},
 	Command {name: "gen", help: "gen\t[length]", param_cnt: (0, 1),
 		handler: Handler::ND(handle_generate)},
-	Command {name: "help", help: "help\t[command]", param_cnt: (0, 1),
-		handler: Handler::ND(handle_help)},
 ];
 
 fn handle_command(name: & str, params: Vec<&str>, data: &mut Data) {
@@ -131,6 +118,8 @@ fn main() {
 		match tokens.next() {
 			Some(name) => match name {
 				"quit" => break,
+				"help" => COMMANDS.iter()
+					.for_each(|c| println!("{}", c.help)),
 				_ => handle_command(name, tokens.collect(), &mut data),
 			},
 			None => println!("command expected")
