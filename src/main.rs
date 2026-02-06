@@ -67,23 +67,8 @@ struct Command {
 	handler: Handler,
 }
 
-const COMMANDS: [Command; 6] = [
-	Command {name: "add", help: "add\tkey\tvalue", param_cnt: (2, 2),
-		handler: Handler::MD(handle_add)},
-	Command {name: "remove", help: "remove\tkey", param_cnt: (1, 1),
-		handler: Handler::MD(handle_remove)},
-	Command {name: "view", help: "view\t[key]", param_cnt: (0, 1),
-		handler: Handler::ID(handle_view)},
-	Command {name: "save", help: "save\tfile", param_cnt: (1, 1),
-		handler: Handler::ID(handle_save)},
-	Command {name: "load", help: "load\tfile", param_cnt: (1, 1),
-		handler: Handler::MD(handle_load)},
-	Command {name: "gen", help: "gen\t[length]", param_cnt: (0, 1),
-		handler: Handler::ND(handle_generate)},
-];
-
-fn handle_command(name: & str, params: Vec<&str>, data: &mut Data) {
-	let found: Vec<&Command> = COMMANDS.iter()
+fn handle_command(name: &str, params: Vec<&str>, commands: &[Command; 6], data: &mut Data) {
+	let found: Vec<&Command> = commands.iter()
 		.filter(|c| c.name == name)
 		.collect();
 
@@ -108,6 +93,21 @@ fn handle_command(name: & str, params: Vec<&str>, data: &mut Data) {
 }
 
 fn main() {
+	const COMMANDS: [Command; 6] = [
+		Command {name: "add", help: "add\tkey\tvalue", param_cnt: (2, 2),
+			handler: Handler::MD(handle_add)},
+		Command {name: "remove", help: "remove\tkey", param_cnt: (1, 1),
+			handler: Handler::MD(handle_remove)},
+		Command {name: "view", help: "view\t[key]", param_cnt: (0, 1),
+			handler: Handler::ID(handle_view)},
+		Command {name: "save", help: "save\tfile", param_cnt: (1, 1),
+			handler: Handler::ID(handle_save)},
+		Command {name: "load", help: "load\tfile", param_cnt: (1, 1),
+			handler: Handler::MD(handle_load)},
+		Command {name: "gen", help: "gen\t[length]", param_cnt: (0, 1),
+			handler: Handler::ND(handle_generate)},
+	];
+
 	let mut data: Data = Default::default();
 
 	loop {
@@ -120,7 +120,7 @@ fn main() {
 				"quit" => break,
 				"help" => COMMANDS.iter()
 					.for_each(|c| println!("{}", c.help)),
-				_ => handle_command(name, tokens.collect(), &mut data),
+				_ => handle_command(name, tokens.collect(), &COMMANDS, &mut data),
 			},
 			None => println!("command expected")
 		}
